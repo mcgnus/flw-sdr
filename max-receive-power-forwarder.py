@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 UPDATE_RATE_HZ_MQTT = 1 # desired update rate via mqtt
 
@@ -65,7 +65,7 @@ while True: # endless loop
             power -= GAIN
             powerDb = 10*np.log10(power)
             # determine the fft-bin that occurred most often and convert to frequency
-            pdseries = pd.Series(zmqindexlists[i])
+            pdseries = pd.Series(zmqindexlists[i]*2) # dirty, dirty hack: In pandas0.17.1 (Ubuntu 16.04), you need at least two values to find a mode
             modes = pdseries.mode()
             index = modes[0]
             frequency = CENTER_FREQUENCY_SDR + index * FFT_DELTA_F
