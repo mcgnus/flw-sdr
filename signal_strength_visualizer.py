@@ -8,19 +8,20 @@ import copy
 import numpy as np
 # position of antenna in the vicon coordinate system
 antenna_positions = {
-    "1.1": [-6.45, -2.67],
-    "1.2": [-6.45, -7.76],
-    "3.2": [13.34, -11.11],
-    "6.2": [-2.61, 0.79],
-    "6.1": [2.49, 0.79],
-    "3.1": [8.46, -11.11],
-    "2.2": [2.34, -11.11],
-    "2.1": [-2.7, -11.11],
-    "5.1": [13.46, 0.79],
-    "5.2": [8.38, 0.79],
-    "4.1": [20.45, -8.04],
-    "4.2": [20.45, -2.42]
+    "1.1": [-11.7, 2.51],
+    "1.2": [-11.7, -2.57],
+    "2.1": [-7.83, -5.71],
+    "2.2": [-2.99, -5.77],
+    "3.1": [3.08, -5.89],
+    "3.2": [8.13, -5.91],
+    "4.1": [14.92, -2.81],
+    "4.2": [15.05, 2.82],
+    "5.1": [8.25, 6.02],
+    "5.2": [3.80, 6.11],
+    "6.1": [-2.93, 6.04],
+    "6.2": [-7.82, 6.02]
 }
+
 robo_x = 0.0
 robo_y = 0.0
 # arrow_start_x = 3
@@ -103,15 +104,15 @@ def calculate_indicator_points():
         arrow_start_y = round(robo_y + (normalized_directions[key][1] * 0.3),3)
 
         relative_strength = calculate_relative_signal_strength(antennas_strength[key])
-        print key, str(relative_strength)
+        #print key, str(relative_strength)
         arrow_end_x = round(arrow_start_x + (normalized_directions[key][0] * relative_strength),3)
         arrow_end_y = round(arrow_start_y + (normalized_directions[key][1] * relative_strength),3)
         points.append({"antenna":str(key),"start": {"x": arrow_start_x, "y": arrow_start_y},
                         "end": {"x": arrow_end_x, "y": arrow_end_y}})
-        print key
+        #print key
         # print "start: ", points[key]["start"]
         # print "end:   ", points[key]["end"]
-        print ('Robo X: ',robo_x, 'Robo Y: ',robo_y)
+        #print ('Robo X: ',robo_x, 'Robo Y: ',robo_y)
         # plot_visualization(robo_x,robo_y)
         # print(points)
         # publish_indicator([arrow_start_x, arrow_start_y],[arrow_end_x, arrow_end_y])
@@ -133,7 +134,7 @@ def plot_visualization(robo_pos_x, robo_pos_y):
     # plt.close(fig1)
 
 def publish_indicators(points):
-    client.publish("/sdr/signalStrengthIndicators", json.dumps({"data":points}), qos=2)
+    client.publish("/sdr/signalStrengthIndicators", json.dumps({"data":points, "robot_position": {"x": robo_x, "y": robo_y}}), qos=2)
     # print(json.dumps())
 
 # debugging for plot
