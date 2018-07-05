@@ -38,7 +38,7 @@
     </param>
     <param>
       <key>generate_options</key>
-      <value>no_gui</value>
+      <value>qt_gui</value>
     </param>
     <param>
       <key>hier_block_src_path</key>
@@ -186,7 +186,7 @@
     </param>
     <param>
       <key>value</key>
-      <value>100</value>
+      <value>50</value>
     </param>
   </block>
   <block>
