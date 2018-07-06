@@ -3,7 +3,7 @@
 ##################################################
 # GNU Radio Python Flow Graph
 # Title: Top Block Even
-# Generated: Tue Jul  3 17:35:35 2018
+# Generated: Fri Jul  6 19:24:59 2018
 ##################################################
 
 if __name__ == '__main__':
@@ -61,10 +61,10 @@ class top_block_even(gr.top_block, Qt.QWidget):
         # Variables
         ##################################################
         self.samp_rate = samp_rate = 250e3
-        self.keep_one_in_n = keep_one_in_n = 50
+        self.keep_one_in_n = keep_one_in_n = 1
         self.gain = gain = 0
         self.fftlen = fftlen = 1024
-        self.f0 = f0 = 433e6
+        self.f0 = f0 = 2405.1e6
 
         ##################################################
         # Blocks

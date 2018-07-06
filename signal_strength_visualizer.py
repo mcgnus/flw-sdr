@@ -22,6 +22,8 @@ antenna_positions = {
     "6.2": [-7.82, 6.02]
 }
 
+counter = 0
+counter_max = 50
 robo_x = 0.0
 robo_y = 0.0
 # arrow_start_x = 3
@@ -65,25 +67,32 @@ def on_connect(client, userdata, flags, rc):
 
 def on_message(client, userdata, msg):
     global robo_x, robo_y
+    global counter, counter_max
     #print "on message"
-    print(msg.topic+" "+str(msg.payload))
+    #print(msg.topic+" "+str(msg.payload))
     if msg.topic == "/sdr/signalStrengthPosition":
         #print "got robot position"
         robo_x = round(json.loads(msg.payload)['x']/1000, 2)
         robo_y = round(json.loads(msg.payload)['y']/1000, 2)
-        # print('RX: ',robo_x,'RY: ',robo_y)
+        #print('RX: ',robo_x,'RY: ',robo_y)
         calculate_normalized_direction([robo_x, robo_y])
     else:
         antenna = msg.topic[13:16]
         antennas_strength[antenna] = round(float(msg.payload), 2)
-    calculate_indicator_points()
+        print(msg.topic+" "+str(msg.payload))
+    counter += 1
+    if counter == counter_max:
+        calculate_indicator_points()
+        counter = 0
 
 
 
-def calculate_relative_signal_strength(rssi):
-    # -60 bis -100
-    MIN_STRENGTH = -105
-    MAX_STRENGTH = -60
+def calculate_relative_signal_strength(antenna, rssi):
+    max_str = [-61.497267865, -63.1750439141, -82.0347329295, -63.1761792973, -81.4817976987, -63.2243993028]
+    min_str = [-108.484741889, -108.24486421, -113.920822794, -109.096477399, -112.451717955, -109.54849841]
+
+    MIN_STRENGTH = min_str[int(antenna[:1])-1]
+    MAX_STRENGTH = max_str[int(antenna[:1])-1]
     RANGE_STRENGTH = MAX_STRENGTH - MIN_STRENGTH
     return round((1./RANGE_STRENGTH)+((-MIN_STRENGTH + min(MAX_STRENGTH, max(MIN_STRENGTH,float(rssi))))/RANGE_STRENGTH),2)
 
@@ -100,10 +109,12 @@ def calculate_indicator_points():
     for key in antennas_strength:
         # print('Key: ', key)
         if not key in normalized_directions.keys(): break
-        arrow_start_x = round(robo_x + (normalized_directions[key][0] * 0.3),3)
-        arrow_start_y = round(robo_y + (normalized_directions[key][1] * 0.3),3)
+        arrow_start_x = round((normalized_directions[key][0] * 0.3),3)
+        arrow_start_y = round((normalized_directions[key][1] * 0.3),3)
+        #arrow_start_x = round(robo_x + (normalized_directions[key][0] * 0.3),3) +0.1
+        #arrow_start_y = round(robo_y + (normalized_directions[key][1] * 0.3),3) - 0.5
 
-        relative_strength = calculate_relative_signal_strength(antennas_strength[key])
+        relative_strength = calculate_relative_signal_strength(key, antennas_strength[key])
         #print key, str(relative_strength)
         arrow_end_x = round(arrow_start_x + (normalized_directions[key][0] * relative_strength),3)
         arrow_end_y = round(arrow_start_y + (normalized_directions[key][1] * relative_strength),3)
@@ -134,6 +145,8 @@ def plot_visualization(robo_pos_x, robo_pos_y):
     # plt.close(fig1)
 
 def publish_indicators(points):
+
+    print "sending"
     client.publish("/sdr/signalStrengthIndicators", json.dumps({"data":points, "robot_position": {"x": robo_x, "y": robo_y}}), qos=2)
     # print(json.dumps())
 

@@ -3,7 +3,7 @@
 UPDATE_RATE_HZ_MQTT = 1 # desired update rate via mqtt
 
 SAMPLE_RATE_HZ_SDR = .25e6 # sample rate of the SDRs = bandwidth
-CENTER_FREQUENCY_SDR = 433e6
+CENTER_FREQUENCY_SDR = 2405.1e6
 GAIN = 0 # configured gain in the sdrs in dB
 
 FFTLENGTH = 1024 # fft-length that is used by max_receive_power

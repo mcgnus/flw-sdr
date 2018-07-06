@@ -6,19 +6,18 @@ mins = [0] * 6
 
 def on_connect(client, userdata, flags, rc):
     #client.subscribe("/sdr/signalStrengthIndicators")
-    #for x in range(7):
+    for x in range(7):
+        client.subscribe("/sdr/antenna_" + str(x) + ".1/rssi")
 
-    client.subscribe("/sdr/antenna_" + sys.argv[1] + ".1/rssi")
-    
 
 def on_message(client, userdata, msg):
-    #global maxs
-    #global mins
-    #maxs[int(msg.topic[13:14])-1] = max( maxs[int(msg.topic[13:14])-1], float(msg.payload))
-    #mins[int(msg.topic[13:14])-1] = min( mins[int(msg.topic[13:14])-1], float(msg.payload))
+    global maxs
+    global mins
+    maxs[int(msg.topic[13:14])-1] = max( maxs[int(msg.topic[13:14])-1], float(msg.payload))
+    mins[int(msg.topic[13:14])-1] = min( mins[int(msg.topic[13:14])-1], float(msg.payload))
     print(str(msg.payload))
-    #print maxs
-    #print mins
+    print maxs
+    print mins
 
 
 client = mqtt.Client()
