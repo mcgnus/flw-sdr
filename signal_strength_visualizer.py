@@ -32,6 +32,7 @@ robo_y = 0.0
 # arrow_end_y = 7
 normalized_directions = {}
 antennas_strength = {}
+antennas_strength_hist = {}
 
 plt.ion()
 # fig1 = mtp.figure.Figure('RSSI_Visualization')
@@ -71,15 +72,15 @@ def on_message(client, userdata, msg):
     #print "on message"
     #print(msg.topic+" "+str(msg.payload))
     if msg.topic == "/sdr/signalStrengthPosition":
-        #print "got robot position"
+        # print "got robot position"
         robo_x = round(json.loads(msg.payload)['x']/1000, 2)
         robo_y = round(json.loads(msg.payload)['y']/1000, 2)
-        #print('RX: ',robo_x,'RY: ',robo_y)
+        # print('RX: ',robo_x,'RY: ',robo_y)
         calculate_normalized_direction([robo_x, robo_y])
     else:
         antenna = msg.topic[13:16]
         antennas_strength[antenna] = round(float(msg.payload), 2)
-        print(msg.topic+" "+str(msg.payload))
+        # print(msg.topic+" "+str(msg.payload))
     counter += 1
     if counter == counter_max:
         calculate_indicator_points()
@@ -88,13 +89,24 @@ def on_message(client, userdata, msg):
 
 
 def calculate_relative_signal_strength(antenna, rssi):
-    max_str = [-61.497267865, -63.1750439141, -82.0347329295, -63.1761792973, -81.4817976987, -63.2243993028]
+    max_str = [-81.497267865, -63.1750439141, -82.0347329295, -63.1761792973, -81.4817976987, -63.2243993028]
     min_str = [-108.484741889, -108.24486421, -113.920822794, -109.096477399, -112.451717955, -109.54849841]
+    
+    # old:
+    # max_str = [-61.497267865, -63.1750439141, -82.0347329295, -63.1761792973, -81.4817976987, -63.2243993028]
+    # min_str = [-108.484741889, -108.24486421, -113.920822794, -109.096477399, -112.451717955, -109.54849841]
 
     MIN_STRENGTH = min_str[int(antenna[:1])-1]
     MAX_STRENGTH = max_str[int(antenna[:1])-1]
     RANGE_STRENGTH = MAX_STRENGTH - MIN_STRENGTH
-    return round((1./RANGE_STRENGTH)+((-MIN_STRENGTH + min(MAX_STRENGTH, max(MIN_STRENGTH,float(rssi))))/RANGE_STRENGTH),2)
+    rel_signal_strength = round((1./RANGE_STRENGTH)+((-MIN_STRENGTH + min(MAX_STRENGTH, max(MIN_STRENGTH,float(rssi))))/RANGE_STRENGTH),2)
+
+    print("Range",RANGE_STRENGTH)
+    print(antenna, "Min rssi", MIN_STRENGTH)
+    print(antenna, "Max rssi", MAX_STRENGTH)
+    print("Vector Length", rel_signal_strength,"Current RSSI",rssi)
+
+    return rel_signal_strength
 
 
 
@@ -109,8 +121,8 @@ def calculate_indicator_points():
     for key in antennas_strength:
         # print('Key: ', key)
         if not key in normalized_directions.keys(): break
-        arrow_start_x = round((normalized_directions[key][0] * 0.3),3)
-        arrow_start_y = round((normalized_directions[key][1] * 0.3),3)
+        arrow_start_x = round((normalized_directions[key][0] * 0.4),3)
+        arrow_start_y = round((normalized_directions[key][1] * 0.4),3)
         #arrow_start_x = round(robo_x + (normalized_directions[key][0] * 0.3),3) +0.1
         #arrow_start_y = round(robo_y + (normalized_directions[key][1] * 0.3),3) - 0.5
 
@@ -118,8 +130,9 @@ def calculate_indicator_points():
         #print key, str(relative_strength)
         arrow_end_x = round(arrow_start_x + (normalized_directions[key][0] * relative_strength),3)
         arrow_end_y = round(arrow_start_y + (normalized_directions[key][1] * relative_strength),3)
-        points.append({"antenna":str(key),"start": {"x": arrow_start_x, "y": arrow_start_y},
+        points.append({"antenna":str(key),"antenna_id":int(key[:1]),"start": {"x": arrow_start_x, "y": arrow_start_y},
                         "end": {"x": arrow_end_x, "y": arrow_end_y}})
+        # print points
         #print key
         # print "start: ", points[key]["start"]
         # print "end:   ", points[key]["end"]
@@ -147,15 +160,13 @@ def plot_visualization(robo_pos_x, robo_pos_y):
 def publish_indicators(points):
 
     print "sending"
+    # print points
     client.publish("/sdr/signalStrengthIndicators", json.dumps({"data":points, "robot_position": {"x": robo_x, "y": robo_y}}), qos=2)
-    # print(json.dumps())
+    # print({"data":points, "robot_position": {"x": robo_x, "y": robo_y}})
 
-# debugging for plot
-# plt.figure('RSSI_Visualization')
-# plt.plot((arrow_start_x, arrow_end_x),(arrow_start_y, arrow_end_y))
-# plt.plot(robo_x,robo_y,'o')
-# plt.show()
-# debugging for plot
+def rssi_statistics():
+    print "blubb"
+
 
 client = mqtt.Client()
 client.on_connect = on_connect
