@@ -6,6 +6,13 @@ import math
 import json
 import copy
 import numpy as np
+import subprocess
+from collections import deque
+from copy import deepcopy
+
+
+
+
 # position of antenna in the vicon coordinate system
 antenna_positions = {
     "1.1": [-11.7, 2.51],
@@ -23,7 +30,7 @@ antenna_positions = {
 }
 
 counter = 0
-counter_max = 50
+counter_max = 1
 robo_x = 0.0
 robo_y = 0.0
 # arrow_start_x = 3
@@ -32,8 +39,44 @@ robo_y = 0.0
 # arrow_end_y = 7
 normalized_directions = {}
 antennas_strength = {}
-antennas_strength_hist = {}
+antennas_state = {}
+# HIST INIT
+hist_length = 5
+nAntennas = 6
+strength_hist = deque()
+for i in range(hist_length):
+    strength_hist.append(0.0)
 
+antennas_strength_hist = {
+    "1.1": deepcopy(strength_hist),
+    "1.2": deepcopy(strength_hist),
+    "2.1": deepcopy(strength_hist),
+    "2.2": deepcopy(strength_hist),
+    "3.1": deepcopy(strength_hist),
+    "3.2": deepcopy(strength_hist),
+    "4.1": deepcopy(strength_hist),
+    "4.2": deepcopy(strength_hist),
+    "5.1": deepcopy(strength_hist),
+    "5.2": deepcopy(strength_hist),
+    "6.1": deepcopy(strength_hist),
+    "6.2": deepcopy(strength_hist)
+}
+
+# DEQUE EXAMPLE
+# >>> d['a'].append(3)
+# >>> print(d)
+# {'a': deque([0.0, 0.0, 0.0, 0.0, 0.0, 3])}
+# >>> d['a'].popleft()
+# 0.0
+# >>> print(d)
+# {'a': deque([0.0, 0.0, 0.0, 0.0, 3])}
+# >>> d['a'].popleft()
+# 0.0
+# >>> print(d)
+# {'a': deque([0.0, 0.0, 0.0, 3])}
+
+
+# PLOT INIT
 plt.ion()
 # fig1 = mtp.figure.Figure('RSSI_Visualization')
 
@@ -69,8 +112,9 @@ def on_connect(client, userdata, flags, rc):
 def on_message(client, userdata, msg):
     global robo_x, robo_y
     global counter, counter_max
+    # global antennas_strength_hist
     #print "on message"
-    #print(msg.topic+" "+str(msg.payload))
+    print(msg.topic+" "+str(msg.payload))
     if msg.topic == "/sdr/signalStrengthPosition":
         # print "got robot position"
         robo_x = round(json.loads(msg.payload)['x']/1000, 2)
@@ -80,6 +124,8 @@ def on_message(client, userdata, msg):
     else:
         antenna = msg.topic[13:16]
         antennas_strength[antenna] = round(float(msg.payload), 2)
+        antennas_strength_hist[antenna].popleft()
+        antennas_strength_hist[antenna].append(round(float(msg.payload), 2))
         # print(msg.topic+" "+str(msg.payload))
     counter += 1
     if counter == counter_max:
@@ -91,7 +137,7 @@ def on_message(client, userdata, msg):
 def calculate_relative_signal_strength(antenna, rssi):
     max_str = [-81.497267865, -63.1750439141, -82.0347329295, -63.1761792973, -81.4817976987, -63.2243993028]
     min_str = [-108.484741889, -108.24486421, -113.920822794, -109.096477399, -112.451717955, -109.54849841]
-    
+
     # old:
     # max_str = [-61.497267865, -63.1750439141, -82.0347329295, -63.1761792973, -81.4817976987, -63.2243993028]
     # min_str = [-108.484741889, -108.24486421, -113.920822794, -109.096477399, -112.451717955, -109.54849841]
@@ -101,10 +147,10 @@ def calculate_relative_signal_strength(antenna, rssi):
     RANGE_STRENGTH = MAX_STRENGTH - MIN_STRENGTH
     rel_signal_strength = round((1./RANGE_STRENGTH)+((-MIN_STRENGTH + min(MAX_STRENGTH, max(MIN_STRENGTH,float(rssi))))/RANGE_STRENGTH),2)
 
-    print("Range",RANGE_STRENGTH)
-    print(antenna, "Min rssi", MIN_STRENGTH)
-    print(antenna, "Max rssi", MAX_STRENGTH)
-    print("Vector Length", rel_signal_strength,"Current RSSI",rssi)
+    # print("Range",RANGE_STRENGTH)
+    # print(antenna, "Min rssi", MIN_STRENGTH)
+    # print(antenna, "Max rssi", MAX_STRENGTH)
+    # print("Vector Length", rel_signal_strength,"Current RSSI",rssi)
 
     return rel_signal_strength
 
@@ -130,7 +176,13 @@ def calculate_indicator_points():
         #print key, str(relative_strength)
         arrow_end_x = round(arrow_start_x + (normalized_directions[key][0] * relative_strength),3)
         arrow_end_y = round(arrow_start_y + (normalized_directions[key][1] * relative_strength),3)
-        points.append({"antenna":str(key),"antenna_id":int(key[:1]),"start": {"x": arrow_start_x, "y": arrow_start_y},
+
+        # CHECK whether the antenna values are still incoming
+        if len(set(list(antennas_strength_hist[key]))) == 1:
+            antennas_state[key] = 'no_connection'
+        else:
+            antennas_state[key] = 'running'
+        points.append({"antenna":str(key),"antenna_id":int(key[:1]),"antenna_state":antennas_state[key],"start": {"x": arrow_start_x, "y": arrow_start_y},
                         "end": {"x": arrow_end_x, "y": arrow_end_y}})
         # print points
         #print key
@@ -162,11 +214,14 @@ def publish_indicators(points):
     print "sending"
     # print points
     client.publish("/sdr/signalStrengthIndicators", json.dumps({"data":points, "robot_position": {"x": robo_x, "y": robo_y}}), qos=2)
-    # print({"data":points, "robot_position": {"x": robo_x, "y": robo_y}})
+    print({"data":points, "robot_position": {"x": robo_x, "y": robo_y}})
 
 def rssi_statistics():
     print "blubb"
 
+    # p = subprocess.Popen(['python', 'script.py', 'arg1', 'arg2'])
+    # # continue with your code then terminate the child
+    # p.terminate()
 
 client = mqtt.Client()
 client.on_connect = on_connect
